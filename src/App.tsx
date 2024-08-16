@@ -1,26 +1,24 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import Layout from "./components/Layout";
+import { UserProvider } from "./UserContext";
+import { config } from './config/config';
+import { initializeApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+import {getStorage} from 'firebase/storage';
 
-function App() {
+const firebaseApp = initializeApp(config.firebaseConfig);
+export const storage = getFirestore(firebaseApp);
+export const db = getFirestore(firebaseApp);
+
+const App: React.FC = () => {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    
+    <div>
+        <UserProvider>
+          <Layout></Layout>
+        </UserProvider>
     </div>
   );
 }
+
 
 export default App;
