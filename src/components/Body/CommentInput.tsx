@@ -212,17 +212,13 @@ const CommentInput: React.FC<CommentInputProps> = ({ pID,showCancelBtn,triggerCa
                             </button>
                         )}
 
-                        {!loading && user && user.name !== "" && (
+                        {!loading && (
                             <button type='submit' className="bg-black text-gray-200 rounded p-1 ml-auto text-xl">
                                 Send
                             </button>
                         )}
 
-                        {!loading && user && user.name == "" && (
-                            <div className="bg-gray text-gray-400 rounded p-1 ml-auto text-xl">
-                                Login to Send
-                            </div>
-                        )}
+                        
 
                     </div>
                 
