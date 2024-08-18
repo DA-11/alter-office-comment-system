@@ -17,11 +17,12 @@ interface Comment {
     attachmentsURLs:[],
     noOfComment : number;
     toggleComponent :() => void; 
+    fetchByLatest: boolean
 }
 
 const COMMENTS_PER_PAGE = 8; 
 
-const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt,attachmentsURLs,noOfComment,toggleComponent}) => {
+const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt,attachmentsURLs,noOfComment,toggleComponent,fetchByLatest}) => {
 
     const[showEmojiPicker,setShowEmojiPicker] = useState<boolean>(false);
     const [showFullText, setShowFullText] = useState<boolean>(false);
@@ -43,14 +44,25 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt
        
         const fetchComments = async () => {
           try {
-            
-            //const q = query(collection(db, "comments"), where('pid', '==', id));
-            const q = query(
+          let q : any;
+          if(fetchByLatest){
+
+            q = query(
                 collection(db, "comments"),
-                where('pid', '==', ""),
+                where('pid', '==', id),
                 orderBy('createdAt', 'desc'),
                 limit(COMMENTS_PER_PAGE)
             );
+
+          }  else { 
+
+            q = query(
+              collection(db, "comments"),
+              where('pid', '==', id),
+              orderBy('reactionCount', 'desc'),
+              limit(COMMENTS_PER_PAGE)
+            );
+          }
             const commentSnapshot = await getDocs(q);
   
             const commentList = commentSnapshot.docs.map(doc => {
@@ -74,7 +86,7 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt
         fetchComments();
 
 
-    }, [renderComment,noOfComment,id]);
+    }, [renderComment,noOfComment,id,fetchByLatest]);
 
     const updateReaction = async ( collectionName : string, docId : string, reactionKey : number ) => {
         
@@ -103,6 +115,10 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt
                   }
                 });
               }
+
+              await updateDoc(docRef, {
+                "reactionCount": increment(1) 
+              });
 
             } else {
               console.error('Document not found');
@@ -228,6 +244,7 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt
                         attachmentsURLs={comment.attachmentsURLs}
                         noOfComment={noOfComment}
                         toggleComponent={toggleComponent}
+                        fetchByLatest={fetchByLatest}
                     />
 
                     </div>

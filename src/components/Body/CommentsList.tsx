@@ -25,11 +25,12 @@ interface Comment {
 interface TotalComments {
     noOfComments : number;
     toggleComponent :() => void; 
+    fetchByLatest: boolean 
 }
 
 const COMMENTS_PER_PAGE = 8; 
 
-const CommentList: React.FC<TotalComments> = ({noOfComments,toggleComponent}) => {
+const CommentList: React.FC<TotalComments> = ({noOfComments,toggleComponent,fetchByLatest}) => {
     const [comments, setComments] = useState<Comment[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -46,13 +47,23 @@ const CommentList: React.FC<TotalComments> = ({noOfComments,toggleComponent}) =>
   
       const fetchComments = async () => {
         try {
-          
-            const q = query(
+
+          let q : any;
+          if(fetchByLatest){
+             q = query(
                 collection(db, "comments"),
                 where('pid', '==', ""),
                 orderBy('createdAt', 'desc'),
                 limit(COMMENTS_PER_PAGE)
             );
+          }  else { 
+            q = query(
+              collection(db, "comments"),
+              where('pid', '==', ""),
+              orderBy('reactionCount', 'desc'),
+              limit(COMMENTS_PER_PAGE)
+            );
+          }
 
             const commentSnapshot = await getDocs(q);
 
@@ -75,7 +86,7 @@ const CommentList: React.FC<TotalComments> = ({noOfComments,toggleComponent}) =>
       };
   
       fetchComments();
-    }, [renderComment,noOfComments]);
+    }, [renderComment,noOfComments,fetchByLatest]);
 
     const handleNextPage = async () => {
         if (!lastVisible) return; // Don't fetch if no more data
@@ -163,6 +174,7 @@ const CommentList: React.FC<TotalComments> = ({noOfComments,toggleComponent}) =>
                     attachmentsURLs={comment.attachmentsURLs}
                     noOfComment={noOfComments}
                     toggleComponent={toggleComponent}
+                    fetchByLatest={fetchByLatest}
                     /> 
             </div>
          ))}

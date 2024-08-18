@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import CommentHeader from "./CommentHeader";
 import CommentInput from "./CommentInput";
 import CommentList from "./CommentsList";
-import {collection, getCountFromServer, increment, } from 'firebase/firestore';
+import {collection, getCountFromServer } from 'firebase/firestore';
 import { db } from "../../App";
 
 
@@ -35,7 +35,7 @@ const CommentSection: React.FC = () => {
         <div className="border-2 rounded-xl p-4 mt-4">
             <CommentHeader noOfComments={noOfComments} fetchByLatest={fetchByLatest} setFetchByLatest={(val) => {setFetchByLatest(val)}}></CommentHeader>
             <CommentInput pID={""} showCancelBtn={false} toggleComponent={() => {setNoOfComments(prevKey => prevKey + 1)}} triggerCancel={() => {}}></CommentInput>
-            <CommentList noOfComments={noOfComments} toggleComponent={() => {setNoOfComments(prevKey => prevKey + 1)}}></CommentList>
+            <CommentList noOfComments={noOfComments} toggleComponent={() => {setNoOfComments(prevKey => prevKey + 1)}} fetchByLatest={fetchByLatest} ></CommentList>
         </div>
             
     )

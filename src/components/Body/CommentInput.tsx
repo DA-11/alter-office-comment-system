@@ -79,6 +79,7 @@ const CommentInput: React.FC<CommentInputProps> = ({ pID,showCancelBtn,triggerCa
             triggerCancel();
             toggleComponent();
 
+            console.log("document created")
         } catch (err) {
             console.log(err);
             setError('Failed to submit comment.');
