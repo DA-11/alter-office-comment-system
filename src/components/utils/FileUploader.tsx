@@ -1,18 +1,18 @@
 import React, { useState } from "react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { doc, updateDoc, arrayUnion } from "firebase/firestore";
-import { storage, db} from '../../App'
+import { storage} from '../../App'
 
-
-type ImageUploadProps = {
+type FileUploadProps = {
   onUpload: (url: string) => void;
+  loading:boolean;
+  setLoading: (val : boolean) => void;
 };
 
-const FileUploader: React.FC<ImageUploadProps> = ({ onUpload }) => {
-  const [loading, setLoading] = useState(false);
+const FileUploader: React.FC<FileUploadProps> = ({ onUpload,loading,setLoading }) => {
+  
   const [error, setError] = useState<string | null>(null);
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
 
     if (!file) return;
@@ -49,7 +49,7 @@ const FileUploader: React.FC<ImageUploadProps> = ({ onUpload }) => {
         </div> 
         <input
           type="file"
-          onChange={handleImageChange}
+          onChange={handleFileChange}
           style={{ display: "none" }}
           disabled={loading}
         />

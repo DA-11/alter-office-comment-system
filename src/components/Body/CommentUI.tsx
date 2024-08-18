@@ -1,5 +1,5 @@
 import EmojiPicker from "emoji-picker-react";
-import { collection, getDocs, query, where , doc, updateDoc, getDoc, increment, Timestamp } from "firebase/firestore";
+import { collection, getDocs, query, where , doc, updateDoc, getDoc, increment, Timestamp, orderBy, limit } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db } from "../../App";
 import CommentInput from "./CommentInput";
@@ -14,11 +14,14 @@ interface Comment {
     createdAt:Timestamp;
     pid: string | null;
     reactions: Record<string,number>;
-    attachmentsURLs:[]
+    attachmentsURLs:[],
+    noOfComment : number;
+    toggleComponent :() => void; 
 }
 
+const COMMENTS_PER_PAGE = 8; 
 
-const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt,attachmentsURLs}) => {
+const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt,attachmentsURLs,noOfComment,toggleComponent}) => {
 
     const[showEmojiPicker,setShowEmojiPicker] = useState<boolean>(false);
     const [showFullText, setShowFullText] = useState<boolean>(false);
@@ -29,17 +32,25 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt
     const [error, setError] = useState<string | null>(null);
     const[renderComment,setRenderComments] = useState<number>(1);
 
+    const[localReactions,setLocalReactions] = useState<Record<string,number>>(reactions);
+
     const currentDate = new Date();
     const commentDate = createdAt.toMillis();
     const currentTime = Math.floor((currentDate.getTime() - commentDate)/1000);
 
     useEffect(() => {
         
+       
         const fetchComments = async () => {
           try {
             
-            const q = query(collection(db, "comments"), where('pid', '==', id));
-  
+            //const q = query(collection(db, "comments"), where('pid', '==', id));
+            const q = query(
+                collection(db, "comments"),
+                where('pid', '==', ""),
+                orderBy('createdAt', 'desc'),
+                limit(COMMENTS_PER_PAGE)
+            );
             const commentSnapshot = await getDocs(q);
   
             const commentList = commentSnapshot.docs.map(doc => {
@@ -63,9 +74,14 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt
         fetchComments();
 
 
-    }, [renderComment]);
+    }, [renderComment,noOfComment,id]);
 
     const updateReaction = async ( collectionName : string, docId : string, reactionKey : number ) => {
+        
+        const newLocalReactions = { ...localReactions };
+        newLocalReactions[reactionKey] = (newLocalReactions[reactionKey] || 0) + 1;
+        setLocalReactions(newLocalReactions);
+        
         try {
             const docRef = doc(db, collectionName, docId);
         
@@ -79,7 +95,7 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt
                   [`reactions.${reactionKey}`]: increment(1) 
                 });
               } else {
-                // Add the new key-value pair
+                
                 await updateDoc(docRef, {
                   reactions: {
                     ...existingReactions,
@@ -87,46 +103,33 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt
                   }
                 });
               }
-        
-              console.log('Reaction updated successfully');
+
             } else {
               console.error('Document not found');
             }
+
+
           } catch (error) {
             console.error('Error updating reaction:', error);
-            throw error;
+            
           }
-      };
+    };
 
     const collectEmoji = (emojiObject : any) => {
         
         const key = emojiObject.unified;
 
         updateReaction('comments',id,key)
-            .then(() => {
-                setRenderComments(prevKey => prevKey + 1);
-            })
-            .catch(error => console.error('Error updating reaction:', error));
+        .then(() => {
+            setRenderComments(prevKey => prevKey + 1);
+            toggleComponent();
+        })
+        .catch(error => console.error('Error updating reaction:', error));
+
     }
 
     const triggerCancel = () => {
         setShowReplyOption(false);
-    }
-
-    const handleFormSubmit = () => {
-        setRenderComments(prevKey => prevKey + 1);
-    };
-
-    const renderEmojis = () => {
-        return (
-            <div className="flex font-bold">
-                {Object.entries(reactions).map(([key, value]) => (
-                    <div key={key} className="px-2 py-1 rounded-xl mr-1 border">
-                    {String.fromCodePoint(parseInt(key, 16))} {value}
-                    </div>
-                ))}
-            </div>
-        )
     }
 
     const getTimeFromSeconds = (time : number) => {
@@ -154,7 +157,7 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt
     
     return (
         <div>
-
+            
             <div className='flex items-center mt-5'>
                 <img className='rounded-full h-8 w-8 mr-1 border border-black' src={picture}></img>
                 <div className='font-bold ml-2'>{name}</div>
@@ -176,7 +179,13 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt
                     </svg>
                 </div>
 
-                {renderEmojis()}
+                <div className="flex font-bold">
+                    {Object.entries(reactions).map(([key, value]) => (
+                        <div key={key} className="px-2 py-1 rounded-xl mr-1 border">
+                        {String.fromCodePoint(parseInt(key, 16))} {value}
+                        </div>
+                    ))}
+                </div>
                 
 
                 <span className="mr-3">|</span>
@@ -198,18 +207,29 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt
             {showReplyOption && (
                 <div className="ml-8 border-l-4 border-black-800">
                     <div className="ml-9">
-                        <CommentInput pID={id} showCancelBtn={true} toggleComponent={triggerCancel}></CommentInput>
+                        <CommentInput pID={id} showCancelBtn={true} triggerCancel={triggerCancel} toggleComponent={toggleComponent}></CommentInput>
                     </div>
                 </div>
             )}
-            {/* <button className="mt-2 text-blue-500 hover:underline" onClick={() => setShowFullText(!showFullText)}>
-                {showFullText ? 'Show Less' : 'Show More'}
-            </button> */}
+            
             
             <div className="ml-10">
                 {comments.map((comment, index) => (
                     <div key={index}>
-                    <CommentUI  name={comment.name} id={comment.id} text={comment.text} picture={comment.picture} reactions={comment.reactions} email={comment.email} pid={comment.pid} createdAt={comment.createdAt} attachmentsURLs={comment.attachmentsURLs}></CommentUI>
+                    <CommentUI  
+                        name={comment.name} 
+                        id={comment.id} 
+                        text={comment.text} 
+                        picture={comment.picture} 
+                        reactions={comment.reactions} 
+                        email={comment.email} 
+                        pid={comment.pid} 
+                        createdAt={comment.createdAt} 
+                        attachmentsURLs={comment.attachmentsURLs}
+                        noOfComment={noOfComment}
+                        toggleComponent={toggleComponent}
+                    />
+
                     </div>
                 ))}
             </div>
