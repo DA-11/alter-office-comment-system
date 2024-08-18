@@ -1,19 +1,24 @@
 import EmojiPicker from "emoji-picker-react";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where , doc, updateDoc, getDoc, increment, Timestamp } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db } from "../../App";
 import CommentInput from "./CommentInput";
-
+import ImageRenderer from "../utils/ImageRenderer";
 
 interface Comment {
-    id:string;
+    id : string
     name: string;
     text: string;
-    picture : string,
+    email: string;
+    picture : string;
+    createdAt:Timestamp;
+    pid: string | null;
+    reactions: Record<string,number>;
+    attachmentsURLs:[]
 }
 
 
-const CommentUI : React.FC<Comment> = ({id,name,text,picture}) => {
+const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt,attachmentsURLs}) => {
 
     const[showEmojiPicker,setShowEmojiPicker] = useState<boolean>(false);
     const [showFullText, setShowFullText] = useState<boolean>(false);
@@ -24,31 +29,26 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture}) => {
     const [error, setError] = useState<string | null>(null);
     const[renderComment,setRenderComments] = useState<number>(1);
 
+    const currentDate = new Date();
+    const commentDate = createdAt.toMillis();
+    const currentTime = Math.floor((currentDate.getTime() - commentDate)/1000);
+
     useEffect(() => {
-  
+        
         const fetchComments = async () => {
           try {
             
-              const q = query(collection(db, "comments"), where('pid', '==', id));
+            const q = query(collection(db, "comments"), where('pid', '==', id));
   
-              const commentSnapshot = await getDocs(q);
+            const commentSnapshot = await getDocs(q);
   
-          //    const commentSnapshot = await db.collection('comments').where('pId', '==', '').get();
-          //   const commentCollection = collection(db, 'comments');
-          //   const commentSnapshot = await getDocs(commentCollection);
-            //const commentList = commentSnapshot.docs.map(doc => doc.data() as Comment);
-    
             const commentList = commentSnapshot.docs.map(doc => {
               const data = doc.data() as Omit<Comment, 'id'>; 
               return { id: doc.id, ...data }; 
             });
   
-          //   const commentList = commentSnapshot.docs.map(doc => ({
-          //     ...doc.data() as Comment,
-          //   }));
-  
-  
-              setComments(commentList);
+          
+            setComments(commentList);
     
           } catch (err) {
     
@@ -61,10 +61,52 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture}) => {
         };
     
         fetchComments();
+
+
     }, [renderComment]);
 
-    const collectEmoji = (reaction : {}) => {
-        console.log(reaction);
+    const updateReaction = async ( collectionName : string, docId : string, reactionKey : number ) => {
+        try {
+            const docRef = doc(db, collectionName, docId);
+        
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              const existingReactions = docSnap.data()?.reactions || {};
+        
+              if (existingReactions.hasOwnProperty(reactionKey)) {
+                
+                await updateDoc(docRef, {
+                  [`reactions.${reactionKey}`]: increment(1) 
+                });
+              } else {
+                // Add the new key-value pair
+                await updateDoc(docRef, {
+                  reactions: {
+                    ...existingReactions,
+                    [reactionKey]: 1
+                  }
+                });
+              }
+        
+              console.log('Reaction updated successfully');
+            } else {
+              console.error('Document not found');
+            }
+          } catch (error) {
+            console.error('Error updating reaction:', error);
+            throw error;
+          }
+      };
+
+    const collectEmoji = (emojiObject : any) => {
+        
+        const key = emojiObject.unified;
+
+        updateReaction('comments',id,key)
+            .then(() => {
+                setRenderComments(prevKey => prevKey + 1);
+            })
+            .catch(error => console.error('Error updating reaction:', error));
     }
 
     const triggerCancel = () => {
@@ -74,6 +116,42 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture}) => {
     const handleFormSubmit = () => {
         setRenderComments(prevKey => prevKey + 1);
     };
+
+    const renderEmojis = () => {
+        return (
+            <div className="flex font-bold">
+                {Object.entries(reactions).map(([key, value]) => (
+                    <div key={key} className="px-2 py-1 rounded-xl mr-1 border">
+                    {String.fromCodePoint(parseInt(key, 16))} {value}
+                    </div>
+                ))}
+            </div>
+        )
+    }
+
+    const getTimeFromSeconds = (time : number) => {
+        if(time <= 60){
+            return (
+                `${time} sec`
+            )
+        } else if(time <= 3600){
+            time = Math.floor(time/60);
+            return (
+                `${time} min`
+            )
+        } else if(time <= 86400) {
+            time = Math.floor(time/3600);
+            return (
+                `${time} hour`
+            )
+        } else {
+            time = Math.floor(time/86400);
+            return (
+                `${time} day`
+            )
+        }
+    }
+    
     return (
         <div>
 
@@ -86,34 +164,36 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture}) => {
                 {text}
             </div>
 
-            <div className="flex items-center text-xs mt-2">
-                <div className="mr-3" onClick={() => {setShowEmojiPicker(!showEmojiPicker)}}>
+            {attachmentsURLs && attachmentsURLs.length > 0 && (
+                <ImageRenderer attachmentsURLs={attachmentsURLs}></ImageRenderer>
+            )}
+            
+
+            <div className="flex items-center text-xs mt-2 ">
+                <div className="mr-3 cursor-pointer" onClick={() => {setShowEmojiPicker(!showEmojiPicker)}}>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.182 15.182a4.5 4.5 0 0 1-6.364 0M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75Zm-.375 0h.008v.015h-.008V9.75Zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75Zm-.375 0h.008v.015h-.008V9.75Z" />
                     </svg>
-
-                    
                 </div>
 
-                <div className="reactions">
-                    
-                        <EmojiPicker open={showEmojiPicker} onEmojiClick={collectEmoji}/>
-                        
-                    </div>
+                {renderEmojis()}
+                
 
                 <span className="mr-3">|</span>
-                <div className="mr-3" onClick={() => {setShowReplyOption(true)}}>
+                <div className="mr-3 cursor-pointer" onClick={() => {setShowReplyOption(true)}}>
                     Reply
                 </div>
 
                 <span className="mr-3">|</span>
                 <div>
-                    5 hours
+                    {getTimeFromSeconds(currentTime)}
                 </div>
 
                 
             </div>
-            
+            <div className="reactions">
+                <EmojiPicker open={showEmojiPicker} onEmojiClick={collectEmoji}/>
+            </div>
                  
             {showReplyOption && (
                 <div className="ml-8 border-l-4 border-black-800">
@@ -129,7 +209,7 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture}) => {
             <div className="ml-10">
                 {comments.map((comment, index) => (
                     <div key={index}>
-                    <CommentUI  name={comment.name} id={comment.id} text={comment.text} picture={comment.picture}></CommentUI>
+                    <CommentUI  name={comment.name} id={comment.id} text={comment.text} picture={comment.picture} reactions={comment.reactions} email={comment.email} pid={comment.pid} createdAt={comment.createdAt} attachmentsURLs={comment.attachmentsURLs}></CommentUI>
                     </div>
                 ))}
             </div>

@@ -3,25 +3,11 @@ import { useEffect, useState } from "react";
 import {collection, getCountFromServer, } from 'firebase/firestore';
 import { db } from "../../App";
 
-const CommentHeader: React.FC = () => {
-    const[noOfComments,setNoOfComments] = useState(0);
+interface TotalComments {
+    noOfComments : number;
+}
 
-    useEffect(() => {
-        const fetchNoOfComments = async () => {
-            try {
-                
-                const coll = collection(db, "comments");
-                const snapshot = await getCountFromServer(coll);
-    
-                setNoOfComments(snapshot.data().count);
-
-            } catch (err){
-                console.log(err);
-            }
-        }
-
-        fetchNoOfComments();
-    },[]);
+const CommentHeader: React.FC<TotalComments> = ({noOfComments}) => {
 
     return (
         
