@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-
 import {collection, addDoc } from "firebase/firestore";
 import { useUser } from '../../UserContext';
 
@@ -50,6 +49,14 @@ const CommentInput: React.FC<CommentInputProps> = ({ pID,showCancelBtn,triggerCa
     const documentPID = pID !== null ? pID : ""; 
 
     const handleSubmit = async (e : React.FormEvent<HTMLFormElement>) => {
+
+        // if(user && user.name == ""){
+        //     setError("Please login to comment");
+        //     setShowWarningFlag(true);
+
+        //     return;
+        // }
+
         e.preventDefault();
         setLoading(true);
         
@@ -64,7 +71,7 @@ const CommentInput: React.FC<CommentInputProps> = ({ pID,showCancelBtn,triggerCa
 
             await addDoc(collection(db, 'comments'), {
                 name: getUserName(),
-                text: text,
+                text: formatText(text),
                 email: getUserEmail(),
                 pid: documentPID,  
                 reactions: reactions,
@@ -106,16 +113,22 @@ const CommentInput: React.FC<CommentInputProps> = ({ pID,showCancelBtn,triggerCa
         setIsUnderline(!isUnderline);
     };
 
+    const formatText = (inputText: string) => {
+        let formattedText = inputText;
+    
+        if (isBold) formattedText = `<b>${formattedText}</b>`;
+        if (isItalic) formattedText = `<i>${formattedText}</i>`;
+        if (isUnderline) formattedText = `<u>${formattedText}</u>`;
+    
+        return formattedText;
+    };
+
     const getFormattedInputStyle = () => {
         let style = '';
         if (isBold) style += 'font-bold ';
         if (isItalic) style += 'italic ';
         if (isUnderline) style += 'underline ';
         return style;
-    };
-
-    const handleSendClick = () => {
-        const formattedText = `${isBold ? '**' : ''}${isItalic ? '*' : ''}${isUnderline ? '__' : ''}${text}${isUnderline ? '__' : ''}${isItalic ? '*' : ''}${isBold ? '**' : ''}`;
     };
 
     const handleFileUpload = (url: string) => {
@@ -167,6 +180,16 @@ const CommentInput: React.FC<CommentInputProps> = ({ pID,showCancelBtn,triggerCa
                 
                 <div className="flex justify-between w-full items-center">
                     <div className='flex'>
+                        {/* <div onClick={handleBoldClick} className={isBold ? 'font-bold mr-3 text-xl' : 'mr-3 text-xl'}>
+                            B
+                        </div>
+                        <div onClick={handleItalicClick} className={isItalic ? 'italic mr-3 ' : 'mr-3 text-xl'}>
+                            I
+                        </div>
+                        <div onClick={handleUnderlineClick} className='underline text-xl mr-3'>
+                            U
+                        </div> */}
+
                         <div onClick={handleBoldClick} className={isBold ? 'font-bold mr-3 text-xl' : 'mr-3 text-xl'}>
                             B
                         </div>
@@ -189,10 +212,16 @@ const CommentInput: React.FC<CommentInputProps> = ({ pID,showCancelBtn,triggerCa
                             </button>
                         )}
 
-                        {!loading && (
+                        {!loading && user && user.name !== "" && (
                             <button type='submit' className="bg-black text-gray-200 rounded p-1 ml-auto text-xl">
                                 Send
                             </button>
+                        )}
+
+                        {!loading && user && user.name == "" && (
+                            <div className="bg-gray text-gray-400 rounded p-1 ml-auto text-xl">
+                                Login to Send
+                            </div>
                         )}
 
                     </div>

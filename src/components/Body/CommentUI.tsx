@@ -1,6 +1,6 @@
 import EmojiPicker from "emoji-picker-react";
 import { collection, getDocs, query, where , doc, updateDoc, getDoc, increment, Timestamp, orderBy, limit } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { db } from "../../App";
 import CommentInput from "./CommentInput";
 import ImageRenderer from "../utils/ImageRenderer";
@@ -20,12 +20,13 @@ interface Comment {
     fetchByLatest: boolean
 }
 
+
+const COMMENTS_PER_LINE = 5;
 const COMMENTS_PER_PAGE = 8; 
 
 const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt,attachmentsURLs,noOfComment,toggleComponent,fetchByLatest}) => {
 
     const[showEmojiPicker,setShowEmojiPicker] = useState<boolean>(false);
-    const [showFullText, setShowFullText] = useState<boolean>(false);
     const[showReplyOption,setShowReplyOption] = useState<boolean>(false);
 
     const [comments, setComments] = useState<Comment[]>([]);
@@ -33,12 +34,32 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt
     const [error, setError] = useState<string | null>(null);
     const[renderComment,setRenderComments] = useState<number>(1);
 
+    const [showFullText, setShowFullText] = useState(false);
+
     const[localReactions,setLocalReactions] = useState<Record<string,number>>(reactions);
 
     const currentDate = new Date();
     const commentDate = createdAt.toMillis();
     const currentTime = Math.floor((currentDate.getTime() - commentDate)/1000);
 
+    const [isOverflowing, setIsOverflowing] = useState<boolean>(false);
+    const textRef = useRef<HTMLDivElement>(null);
+
+    const createMarkup = (html: string) => {
+        return { __html: html };
+    };
+
+    useLayoutEffect(() => {
+
+        
+        const element = textRef.current;
+        if (element) {
+            console.log(element.scrollHeight)
+            console.log(element.clientHeight)
+            setIsOverflowing(element.scrollHeight > element.clientHeight);
+        }
+    }, [text, showFullText]);
+    
     useEffect(() => {
         
        
@@ -87,6 +108,8 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt
 
 
     }, [renderComment,noOfComment,id,fetchByLatest]);
+
+    
 
     const updateReaction = async ( collectionName : string, docId : string, reactionKey : number ) => {
         
@@ -179,9 +202,31 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt
                 <div className='font-bold ml-2'>{name}</div>
             </div>
 
-            <div className={`w-full ${showFullText ? 'max-h-none' : 'max-h-[7.5em]'} leading-[1.5em] overflow-hidden text-gray-500 font-medium mt-4`}>
-                {text}
-            </div>
+            {/* <div
+                ref={textRef}
+                className={`w-full ${showFullText ? '' : 'max-h-[7.5em]'} leading-[1.5em] overflow-hidden text-gray-500 mt-4`}
+            > */}
+            
+                <div dangerouslySetInnerHTML={createMarkup(text)} />
+        {/* </div> */}
+
+            {isOverflowing && !showFullText && (
+                <button
+                    className="text-blue-500 mt-2"
+                    onClick={() => setShowFullText(true)}
+                >
+                    Show More
+                </button>
+            )}
+
+            {showFullText && (
+                <button
+                    className="text-blue-500 mt-2"
+                    onClick={() => setShowFullText(false)}
+                >
+                    Show Less
+                </button>
+            )}
 
             {attachmentsURLs && attachmentsURLs.length > 0 && (
                 <ImageRenderer attachmentsURLs={attachmentsURLs}></ImageRenderer>

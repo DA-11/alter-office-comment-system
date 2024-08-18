@@ -4,7 +4,6 @@ import { config } from './config/config';
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import {getStorage} from 'firebase/storage';
-import { useEffect, useState } from "react";
 
 const firebaseApp = initializeApp(config.firebaseConfig);
 export const storage = getStorage(firebaseApp);
