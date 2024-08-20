@@ -50,7 +50,6 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt
     };
 
     useLayoutEffect(() => {
-
         
         const element = textRef.current;
         if (element) {
@@ -206,8 +205,8 @@ const CommentUI : React.FC<Comment> = ({id,name,text,picture,reactions,createdAt
                 ref={textRef}
                 className={`w-full ${showFullText ? '' : 'max-h-[7.5em]'} leading-[1.5em] overflow-hidden text-gray-500 mt-4`}
             > */}
-            
-                <div dangerouslySetInnerHTML={createMarkup(text)} />
+                
+                <div ref={textRef} className={`w-full ${showFullText ? '' : 'max-h-[7.5em]'} leading-[1.5em] overflow-hidden text-gray-500 mt-4`} dangerouslySetInnerHTML={createMarkup(text)} />
         {/* </div> */}
 
             {isOverflowing && !showFullText && (
